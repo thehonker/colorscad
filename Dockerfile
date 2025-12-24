@@ -1,7 +1,7 @@
 # Dockerfile for ColorSCAD
 # ColorSCAD is a script that helps export OpenSCAD models to AMF or 3MF format with color information preserved
 
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,11 +16,16 @@ RUN apt-get update && apt-get install -y \
     cmake \
     g++ \
     git \
-    openscad \
     pkg-config \
     unzip \
-    zip \
-    && rm -rf /var/lib/apt/lists/*
+    wget \
+    zip
+
+RUN wget -qO- https://files.openscad.org/OBS-Repository-Key.pub | tee /etc/apt/trusted.gpg.d/obs-openscad-nightly.asc
+RUN echo "deb https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/ ./" | tee /etc/apt/sources.list.d/openscad.list
+RUN apt-get update && apt-get install -y \
+    openscad
+RUN rm -rf /var/lib/apt/lists/*
 
 # Copy local colorscad files
 WORKDIR /opt/colorscad
@@ -33,7 +38,7 @@ RUN mkdir build && \
     cmake --build .
 
 # Final stage - smaller image with only runtime dependencies
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -42,8 +47,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install only runtime dependencies (OpenSCAD)
 RUN apt-get update && apt-get install -y \
     bash \
-    openscad \
-    && rm -rf /var/lib/apt/lists/*
+    wget
+
+RUN wget -qO- https://files.openscad.org/OBS-Repository-Key.pub | tee /etc/apt/trusted.gpg.d/obs-openscad-nightly.asc
+RUN echo "deb https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/ ./" | tee /etc/apt/sources.list.d/openscad.list
+RUN apt-get update && apt-get install -y \
+    openscad
+RUN rm -rf /var/lib/apt/lists/*
 
 # Copy built binaries from builder stage
 COPY --from=builder /opt/colorscad/3mfmerge/bin/3mfmerge /usr/local/bin/
